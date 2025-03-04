@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Retry Pattern Visualizer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .retry-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .attempt {
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .failure {
+            background-color: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .controls {
+            margin: 20px 0;
+        }
+        .timer {
+            font-size: 1.2em;
+            color: #666;
+        }
+        button {
+            padding: 10px 20px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .config {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #e9ecef;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="retry-container">
+        <h1>Retry Pattern Visualizer</h1>
+        
+        <div class="config">
+            <h3>Configuración:</h3>
+            <p>• Máximo de intentos: <span id="retries">Cargando...</span></p>
+            <p>• Delay entre intentos: <span id="delay">Cargando...</span>ms</p>
+            <p>• API endpoint: <span id="endpoint">Cargando...</span></p>
+        </div>
+
+        <div class="controls">
+            <button onclick="startSimulation()">Iniciar Simulación</button>
+            <button onclick="setApi('https://api.example.com')">Usar API Ejemplo</button>
+            <button onclick="setApi('https://jsonplaceholder.typicode.com/posts/1')">Usar API Real</button>
+            <span class="timer"></span>
+        </div>
+
+        <div id="attempts">
+            <div class="attempt" id="attempt1">Intento 1: Conectando...</div>
+            <div class="attempt" id="attempt2">Intento 2: Conectando...</div>
+            <div class="attempt" id="attempt3">Intento 3: Conectando...</div>
+            <div class="attempt" id="attempt4">Intento 4: Conectando...</div>
+            <div class="attempt" id="attempt5">Intento 5: Conectando...</div>
+        </div>
+    </div>
+
+    <script>
+        async function loadConfig() {
+            try {
+                const response = await fetch('/config');
+                const config = await response.json();
+                
+                document.getElementById('retries').textContent = config.retries;
+                document.getElementById('delay').textContent = config.delay;
+                document.getElementById('endpoint').textContent = 'https://api.example.com';
+            } catch (error) {
+                console.error('Error loading config:', error);
+            }
+        }
+
+        // Carga la configuración cuando la página se inicie
+        window.addEventListener('load', loadConfig);
+
+        function sleep(ms) {
+            return new Promise(resolve => setTimeout(resolve, ms));
+        }
+
+        async function startSimulation() {
+            const attempts = document.querySelectorAll('.attempt');
+            attempts.forEach(a => {
+                a.style.display = 'none';
+                a.className = 'attempt';
+            });
+
+            let currentAttempt = 1;
+            while (currentAttempt <= 5) {
+                const attempt = document.getElementById(`attempt${currentAttempt}`);
+                attempt.style.display = 'block';
+                attempt.textContent = `Intento ${currentAttempt}: Conectando...`;
+                
+                try {
+                    const response = await fetch('/fetch');
+                    const result = await response.json();
+                    
+                    if (result.success) {
+                        attempt.textContent = `Intento ${currentAttempt}: ¡Éxito!`;
+                        attempt.classList.add('success');
+                        break;
+                    } else {
+                        attempt.textContent = `Intento ${currentAttempt}: Error - ${result.error}`;
+                        attempt.classList.add('failure');
+                        await sleep(1000); // Usar el mismo delay que en retryConfig
+                    }
+                } catch (error) {
+                    attempt.textContent = `Intento ${currentAttempt}: Error - ${error.message}`;
+                    attempt.classList.add('failure');
+                    await sleep(1000);
+                }
+                currentAttempt++;
+            }
+        }
+
+        async function setApi(url) {
+            try {
+                const response = await fetch('/setApi', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    document.getElementById('endpoint').textContent = url;
+                }
+            } catch (error) {
+                console.error('Error setting API:', error);
+            }
+        }
+    </script>
+</body>
+</html>
